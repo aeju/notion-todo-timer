@@ -149,7 +149,7 @@ public sealed class MainViewModel : ObservableObject
             _loadedDay = _settings.CurrentDay;
 
             var today = await _notion.GetTodayTasksAsync(_loadedDay);
-            Replace(TodayTasks, today);
+            Replace(TodayTasks, today.OrderBy(t => t.IsDone));
 
             if (_settings.HasLongTerm)
                 Replace(LongTermTasks, await _notion.GetLongTermOpenTasksAsync());
@@ -201,9 +201,21 @@ public sealed class MainViewModel : ObservableObject
     private void ApplyDone(TodoItem item, bool done)
     {
         item.IsDone = done;
+        MoveByDone(item.Source == TaskSource.Today ? TodayTasks : LongTermTasks, item);
         if (done && ReferenceEquals(item, _activeTask)) ResetTimer();
         RaiseHeaders();
         Status = done ? $"끝: {item.Title}" : $"되돌림: {item.Title}";
+    }
+
+    // 완료한 항목은 맨 아래로, 체크 해제한 항목은 완료 항목들 바로 위로
+    private static void MoveByDone(ObservableCollection<TodoItem> list, TodoItem item)
+    {
+        var from = list.IndexOf(item);
+        if (from < 0) return;
+        var to = item.IsDone
+            ? list.Count - 1
+            : list.Count(t => !t.IsDone && !ReferenceEquals(t, item));
+        if (from != to) list.Move(from, to);
     }
 
     private void RaiseHeaders()
