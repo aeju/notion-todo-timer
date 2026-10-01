@@ -201,7 +201,6 @@ public sealed class MainViewModel : ObservableObject
     private void ApplyDone(TodoItem item, bool done)
     {
         item.IsDone = done;
-        if (item.Source == TaskSource.LongTerm && done) LongTermTasks.Remove(item);
         if (done && ReferenceEquals(item, _activeTask)) ResetTimer();
         RaiseHeaders();
         Status = done ? $"끝: {item.Title}" : $"되돌림: {item.Title}";
