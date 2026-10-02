@@ -17,6 +17,7 @@ public sealed class AppSettings
     public string DoneProperty { get; set; } = "완료";
     public string DonePropertyType { get; set; } = "checkbox";  // "checkbox" 또는 "date"
     public string DateProperty { get; set; } = "날짜";          // 오늘 DB에서 그날을 표시하는 속성
+    public string CategoryProperty { get; set; } = "영역";      // 선택 속성. 비우면 표시 안 함
 
     // 이 시각 이전은 전날로 본다 (새벽 작업이 전날 목록에 남도록)
     public int DayStartHour { get; set; } = 5;

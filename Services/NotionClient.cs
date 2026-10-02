@@ -132,13 +132,24 @@ public sealed class NotionClient
                 : dp.TryGetProperty("date", out var dd) && dd.ValueKind == JsonValueKind.Object;
         }
 
+        string category = "", categoryColor = "default";
+        if (_s.CategoryProperty.Length > 0 &&
+            props.TryGetProperty(_s.CategoryProperty, out var cp) &&
+            cp.TryGetProperty("select", out var sel) && sel.ValueKind == JsonValueKind.Object)
+        {
+            category = sel.GetProperty("name").GetString() ?? "";
+            if (sel.TryGetProperty("color", out var col)) categoryColor = col.GetString() ?? "default";
+        }
+
         return new TodoItem
         {
             Id = page.GetProperty("id").GetString()!,
             Title = title.Length > 0 ? title.ToString() : "(제목 없음)",
             Due = due,
             Source = source,
-            IsDone = done
+            IsDone = done,
+            Category = category,
+            CategoryColor = categoryColor
         };
     }
 
