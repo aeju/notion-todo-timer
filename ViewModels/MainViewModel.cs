@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Media;
+using System.Windows;
 using System.Windows.Input;
 using System.Windows.Threading;
 using FocusBar.Models;
@@ -39,6 +40,10 @@ public sealed class MainViewModel : ObservableObject
     public ICommand AddCommand { get; }
     public ICommand StartCommand { get; }
     public ICommand ToggleDoneCommand { get; }
+    public ICommand BeginRenameCommand { get; }
+    public ICommand CommitRenameCommand { get; }
+    public ICommand CancelRenameCommand { get; }
+    public ICommand DeleteCommand { get; }
     public ICommand FinishDoneCommand { get; }
     public ICommand ExtendCommand { get; }
     public ICommand StopCommand { get; }
@@ -70,6 +75,10 @@ public sealed class MainViewModel : ObservableObject
         AddCommand = new RelayCommand(async _ => await AddAsync(), _ => _notion != null && !_isBusy && !string.IsNullOrWhiteSpace(NewTaskTitle));
         StartCommand = new RelayCommand(p => Start((TodoItem)p!), p => p is TodoItem { IsDone: false } && Minutes > 0);
         ToggleDoneCommand = new RelayCommand(async p => await ToggleDoneAsync((TodoItem)p!), p => p is TodoItem && !_isBusy);
+        BeginRenameCommand = new RelayCommand(p => BeginRename((TodoItem)p!), p => p is TodoItem && !_isBusy);
+        CommitRenameCommand = new RelayCommand(async p => await CommitRenameAsync((TodoItem)p!), p => p is TodoItem);
+        CancelRenameCommand = new RelayCommand(p => { if (p is TodoItem t) t.IsEditing = false; });
+        DeleteCommand = new RelayCommand(async p => await DeleteAsync((TodoItem)p!), p => p is TodoItem && !_isBusy);
         FinishDoneCommand = new RelayCommand(async _ => await FinishActiveAsync(), _ => _activeTask != null && !_isBusy);
         ExtendCommand = new RelayCommand(_ => Extend(), _ => State != TimerState.Idle);
         StopCommand = new RelayCommand(_ => ResetTimer(), _ => State != TimerState.Idle);
@@ -152,16 +161,9 @@ public sealed class MainViewModel : ObservableObject
             var prepared = "";
             if (DayState.LastPrepared() != _loadedDay)
             {
-                try
-                {
-                    var (carried, created) = await _notion.PrepareDayAsync(_loadedDay);
-                    DayState.MarkPrepared(_loadedDay);
-                    if (carried + created > 0) prepared = $" · 이월 {carried} · 루틴 {created}";
-                }
-                catch (Exception ex)
-                {
-                    prepared = $" · 하루 준비 실패: {ex.Message}";
-                }
+                var (carried, created) = await _notion.PrepareDayAsync(_loadedDay);
+                DayState.MarkPrepared(_loadedDay);
+                if (carried + created > 0) prepared = $" · 이월 {carried} · 루틴 {created}";
             }
 
             var today = await _notion.GetTodayTasksAsync(_loadedDay);
@@ -198,6 +200,52 @@ public sealed class MainViewModel : ObservableObject
         {
             await _notion.SetDoneAsync(item.Id, target);
             ApplyDone(item, target);
+        });
+    }
+
+    // ── 우클릭: 이름 수정 / 삭제 ─────────────────
+
+    private static void BeginRename(TodoItem item)
+    {
+        item.EditText = item.Title;
+        item.IsEditing = true;
+    }
+
+    // Enter 또는 입력칸 밖을 누르면 저장. 내용이 그대로거나 비었으면 저장하지 않음
+    public async Task CommitRenameAsync(TodoItem item)
+    {
+        if (!item.IsEditing) return;          // Enter 후 포커스가 빠질 때 두 번 저장되지 않도록
+        item.IsEditing = false;
+
+        var title = item.EditText.Trim();
+        if (_notion == null || title.Length == 0 || title == item.Title) return;
+
+        var before = item.Title;
+        item.Title = title;
+        if (ReferenceEquals(item, _activeTask)) OnPropertyChanged(nameof(ActiveTitle));
+        await RunAsync(async () =>
+        {
+            try { await _notion.RenameAsync(item.Id, title); Status = $"이름 수정: {title}"; }
+            catch { item.Title = before; throw; }   // 실패하면 원래 이름으로 되돌림
+        });
+    }
+
+    private async Task DeleteAsync(TodoItem item)
+    {
+        if (_notion == null) return;
+        var answer = MessageBox.Show(Application.Current.MainWindow,
+            $"'{item.Title}'을(를) 삭제할까요?\nNotion 휴지통으로 이동하고, 30일 안에 복구할 수 있어요.",
+            "삭제", MessageBoxButton.OKCancel, MessageBoxImage.Question);
+        if (answer != MessageBoxResult.OK) return;
+
+        await RunAsync(async () =>
+        {
+            await _notion.DeleteAsync(item.Id);
+            TodayTasks.Remove(item);
+            LongTermTasks.Remove(item);
+            if (ReferenceEquals(item, _activeTask)) ResetTimer();
+            RaiseHeaders();
+            Status = $"삭제: {item.Title}";
         });
     }
 

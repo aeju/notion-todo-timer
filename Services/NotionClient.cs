@@ -173,6 +173,25 @@ public sealed class NotionClient
         using var _ = await SendAsync(HttpMethod.Patch, $"pages/{pageId}", body);
     }
 
+    public async Task RenameAsync(string pageId, string title)
+    {
+        var body = new Dictionary<string, object>
+        {
+            ["properties"] = new Dictionary<string, object>
+            {
+                [_s.TitleProperty] = new { title = new[] { new { text = new { content = title } } } }
+            }
+        };
+        using var _ = await SendAsync(HttpMethod.Patch, $"pages/{pageId}", body);
+    }
+
+    // Notion 휴지통으로 이동 (30일 안에 Notion에서 복구 가능)
+    public async Task DeleteAsync(string pageId)
+    {
+        var body = new Dictionary<string, object> { ["archived"] = true };
+        using var _ = await SendAsync(HttpMethod.Patch, $"pages/{pageId}", body);
+    }
+
     private bool IsCheckboxDone => _s.DonePropertyType.Equals("checkbox", StringComparison.OrdinalIgnoreCase);
 
     private object NotDoneFilter() => IsCheckboxDone

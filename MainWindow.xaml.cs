@@ -1,5 +1,7 @@
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Controls;
+using FocusBar.Models;
 using FocusBar.ViewModels;
 
 namespace FocusBar;
@@ -55,4 +57,18 @@ public partial class MainWindow : Window
     private void Minimize_Click(object sender, RoutedEventArgs e) => WindowState = WindowState.Minimized;
 
     private void Close_Click(object sender, RoutedEventArgs e) => Close();
+
+    // 이름 수정 입력칸이 나타나면 바로 입력할 수 있게 포커스 + 전체 선택
+    private void EditBox_IsVisibleChanged(object sender, DependencyPropertyChangedEventArgs e)
+    {
+        if (sender is TextBox box && box.IsVisible)
+            Dispatcher.InvokeAsync(() => { box.Focus(); box.SelectAll(); });
+    }
+
+    // 입력칸 밖을 누르면 저장 (Esc로 취소한 경우는 이미 편집이 끝나 있어 아무 일도 안 함)
+    private async void EditBox_LostKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
+    {
+        if (sender is TextBox { DataContext: TodoItem item } && DataContext is MainViewModel vm)
+            await vm.CommitRenameAsync(item);
+    }
 }

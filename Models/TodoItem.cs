@@ -7,9 +7,27 @@ public enum TaskSource { Today, LongTerm }
 public sealed class TodoItem : ObservableObject
 {
     private bool _isDone;
+    private string _title = "";
+    private bool _isEditing;
+    private string _editText = "";
 
     public required string Id { get; init; }
-    public required string Title { get; init; }
+
+    public required string Title
+    {
+        get => _title;
+        set => Set(ref _title, value);
+    }
+
+    // 이름 수정 중일 때 제목 대신 입력칸을 보여줌
+    public bool IsEditing
+    {
+        get => _isEditing;
+        set { if (Set(ref _isEditing, value)) OnPropertyChanged(nameof(IsNotEditing)); }
+    }
+
+    public bool IsNotEditing => !IsEditing;
+    public string EditText { get => _editText; set => Set(ref _editText, value); }
     public DateTime? Due { get; init; }
     public TaskSource Source { get; init; }
     public string Category { get; init; } = "";
