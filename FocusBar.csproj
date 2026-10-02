@@ -8,10 +8,12 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>FocusBar</AssemblyName>
     <RootNamespace>FocusBar</RootNamespace>
+    <ApplicationIcon>icon.ico</ApplicationIcon>  
   </PropertyGroup>
 
   <ItemGroup>
     <None Update="appsettings.json" CopyToOutputDirectory="PreserveNewest" />
+	<Resource Include="icon.ico" />
   </ItemGroup>
 
 </Project>
