@@ -10,6 +10,7 @@ public sealed class AppSettings
     // 오늘 할 일: '날짜' = 오늘인 행만 보여줌 / 장기: 미완료 전체
     public string TodayDatabaseId { get; set; } = "";
     public string LongTermDatabaseId { get; set; } = "";
+    public string RoutineDatabaseId { get; set; } = "";      // 비우면 루틴 생성 안 함
 
     // 두 DB가 같은 속성 이름을 쓴다 (Notion에 보이는 이름 그대로)
     public string TitleProperty { get; set; } = "할 일";
@@ -18,9 +19,18 @@ public sealed class AppSettings
     public string DonePropertyType { get; set; } = "checkbox";  // "checkbox" 또는 "date"
     public string DateProperty { get; set; } = "날짜";          // 오늘 DB에서 그날을 표시하는 속성
     public string CategoryProperty { get; set; } = "영역";      // 선택 속성. 비우면 표시 안 함
+    public string RoutineRelationProperty { get; set; } = "루틴"; // 오늘 DB → 루틴 DB 관계형
+
+    // 루틴 DB 속성
+    public string RoutineNameProperty { get; set; } = "이름";
+    public string RoutineDaysProperty { get; set; } = "요일";     // 월~일 다중 선택
+    public string RoutineEnabledProperty { get; set; } = "사용";  // 체크박스
+
+    // 하루 첫 실행 때 전날까지의 미완료(루틴 제외)를 오늘로 옮김
+    public bool CarryOver { get; set; } = true;
 
     // 이 시각 이전은 전날로 본다 (새벽 작업이 전날 목록에 남도록)
-    public int DayStartHour { get; set; } = 5;
+    public int DayStartHour { get; set; } = 7;
 
     public int DefaultMinutes { get; set; } = 25;
     public int ExtendMinutes { get; set; } = 5;
@@ -33,6 +43,7 @@ public sealed class AppSettings
         TodayDatabaseId.Length == 32;
 
     public bool HasLongTerm => LongTermDatabaseId.Length == 32;
+    public bool HasRoutines => RoutineDatabaseId.Length == 32;
 
     public DateTime CurrentDay => DateTime.Now.AddHours(-DayStartHour).Date;
 
@@ -53,6 +64,7 @@ public sealed class AppSettings
             var settings = JsonSerializer.Deserialize<AppSettings>(File.ReadAllText(path), options) ?? new AppSettings();
             settings.TodayDatabaseId = NormalizeId(settings.TodayDatabaseId);
             settings.LongTermDatabaseId = NormalizeId(settings.LongTermDatabaseId);
+            settings.RoutineDatabaseId = NormalizeId(settings.RoutineDatabaseId);
             return settings;
         }
         catch (JsonException ex)

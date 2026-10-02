@@ -14,6 +14,7 @@ public sealed class TodoItem : ObservableObject
     public TaskSource Source { get; init; }
     public string Category { get; init; } = "";
     public string CategoryColor { get; init; } = "default";   // Notion 선택 옵션 색 이름
+    public IReadOnlyList<string> RoutineIds { get; init; } = Array.Empty<string>();
 
     public bool HasCategory => Category.Length > 0;
     public string CategoryBackground => NotionColors.Background(CategoryColor);

@@ -148,6 +148,22 @@ public sealed class MainViewModel : ObservableObject
             Status = "불러오는 중…";
             _loadedDay = _settings.CurrentDay;
 
+            // 이 PC에서 오늘 처음이면 이월 + 루틴 생성 (루틴을 지웠을 때 다시 생기지 않도록 하루 한 번만)
+            var prepared = "";
+            if (DayState.LastPrepared() != _loadedDay)
+            {
+                try
+                {
+                    var (carried, created) = await _notion.PrepareDayAsync(_loadedDay);
+                    DayState.MarkPrepared(_loadedDay);
+                    if (carried + created > 0) prepared = $" · 이월 {carried} · 루틴 {created}";
+                }
+                catch (Exception ex)
+                {
+                    prepared = $" · 하루 준비 실패: {ex.Message}";
+                }
+            }
+
             var today = await _notion.GetTodayTasksAsync(_loadedDay);
             Replace(TodayTasks, today.OrderBy(t => t.IsDone));
 
@@ -155,7 +171,7 @@ public sealed class MainViewModel : ObservableObject
                 Replace(LongTermTasks, await _notion.GetLongTermOpenTasksAsync());
 
             RaiseHeaders();
-            Status = $"{DateTime.Now:HH:mm} 갱신";
+            Status = $"{DateTime.Now:HH:mm} 갱신{prepared}";
         });
     }
 
@@ -173,11 +189,11 @@ public sealed class MainViewModel : ObservableObject
         });
     }
 
-    // 오늘: 체크/해제 토글 (목록에 남음) · 장기: 완료 처리 후 목록에서 제거
+    // 오늘·장기 모두 체크/해제 토글. 체크한 항목은 취소선으로 남음 (장기는 새로고침 시 빠짐)
     private async Task ToggleDoneAsync(TodoItem item)
     {
         if (_notion == null) return;
-        var target = item.Source == TaskSource.Today ? !item.IsDone : true;
+        var target = !item.IsDone;
         await RunAsync(async () =>
         {
             await _notion.SetDoneAsync(item.Id, target);
