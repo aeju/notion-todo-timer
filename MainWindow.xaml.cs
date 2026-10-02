@@ -6,6 +6,8 @@ namespace FocusBar;
 
 public partial class MainWindow : Window
 {
+    private double _normalHeight;
+
     public MainWindow()
     {
         InitializeComponent();
@@ -18,6 +20,22 @@ public partial class MainWindow : Window
         {
             if (WindowState == WindowState.Minimized) WindowState = WindowState.Normal;
             Activate();
+        };
+
+        // 미니 모드: 내용 높이에 맞춰 줄이고, 돌아오면 직접 맞춰둔 높이로 복원
+        vm.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName != nameof(MainViewModel.IsMini)) return;
+            if (vm.IsMini)
+            {
+                _normalHeight = ActualHeight;
+                SizeToContent = SizeToContent.Height;
+            }
+            else
+            {
+                SizeToContent = SizeToContent.Manual;
+                Height = _normalHeight;
+            }
         };
 
         Loaded += async (_, _) => await vm.RefreshAsync();

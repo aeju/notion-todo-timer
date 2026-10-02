@@ -3,10 +3,14 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:controls="clr-namespace:FocusBar.Controls"
         Icon="/icon.ico"
-        Title="FocusBar" Width="320" SizeToContent="Height"
-        Topmost="True" WindowStyle="None" ResizeMode="NoResize"
+        Title="FocusBar" Width="320" Height="560" MinWidth="240" MinHeight="30"
+        Topmost="True" WindowStyle="None" ResizeMode="CanResize"
         Background="#FAFAF7" BorderBrush="#D0D0C8" BorderThickness="1"
         FontFamily="Malgun Gothic, Segoe UI" FontSize="13">
+
+    <WindowChrome.WindowChrome>
+        <WindowChrome CaptionHeight="0" ResizeBorderThickness="6" GlassFrameThickness="0" CornerRadius="0" />
+    </WindowChrome.WindowChrome>
 
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis" />
@@ -84,9 +88,9 @@
         </DataTemplate>
     </Window.Resources>
 
-    <StackPanel>
+    <DockPanel LastChildFill="True">
         <!-- 헤더: 드래그로 창 이동 -->
-        <Grid Background="#EFEFE8" MouseLeftButtonDown="Header_MouseLeftButtonDown">
+        <Grid DockPanel.Dock="Top" Background="#EFEFE8" MouseLeftButtonDown="Header_MouseLeftButtonDown">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
@@ -105,7 +109,7 @@
         </Grid>
 
         <!-- 타이머 -->
-        <Border Padding="10" BorderBrush="#E0E0D8" BorderThickness="0,0,0,1"
+        <Border DockPanel.Dock="Top" Padding="10" BorderBrush="#E0E0D8" BorderThickness="0,0,0,1"
                 Visibility="{Binding IsTimerVisible, Converter={StaticResource BoolToVis}}">
             <Border.Style>
                 <Style TargetType="Border">
@@ -140,14 +144,21 @@
         </Border>
 
         <!-- 오늘 + 장기 (미니 모드에서는 숨김) -->
-        <StackPanel Margin="10,8,10,10" Visibility="{Binding IsListVisible, Converter={StaticResource BoolToVis}}">
+        <Grid Margin="10,8,10,10" Visibility="{Binding IsListVisible, Converter={StaticResource BoolToVis}}">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
 
-            <TextBlock Text="{Binding TodayHeader}" Style="{StaticResource SectionHeader}" />
-            <ScrollViewer MaxHeight="280" VerticalScrollBarVisibility="Auto">
+            <TextBlock Grid.Row="0" Text="{Binding TodayHeader}" Style="{StaticResource SectionHeader}" />
+            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
                 <ItemsControl ItemsSource="{Binding TodayTasks}" ItemTemplate="{StaticResource TaskRow}" Grid.IsSharedSizeScope="True" />
             </ScrollViewer>
 
-            <Grid Margin="0,6,0,0">
+            <Grid Grid.Row="2" Margin="0,6,0,0">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
@@ -165,7 +176,7 @@
                 <TextBlock Grid.Column="2" Text="분" VerticalAlignment="Center" />
             </Grid>
 
-            <Expander Margin="0,10,0,0" IsExpanded="False" Header="{Binding LongTermHeader}"
+            <Expander Grid.Row="3" Margin="0,10,0,0" IsExpanded="False" Header="{Binding LongTermHeader}"
                       Foreground="#888" Visibility="{Binding HasLongTerm, Converter={StaticResource BoolToVis}}">
                 <ScrollViewer MaxHeight="240" VerticalScrollBarVisibility="Auto" Margin="0,4,0,0">
                     <ItemsControl ItemsSource="{Binding LongTermTasks}" ItemTemplate="{StaticResource TaskRow}" Grid.IsSharedSizeScope="True"
@@ -173,8 +184,8 @@
                 </ScrollViewer>
             </Expander>
 
-            <TextBlock Text="{Binding Status}" Margin="0,6,0,0" FontSize="11"
+            <TextBlock Grid.Row="4" Text="{Binding Status}" Margin="0,6,0,0" FontSize="11"
                        Foreground="#888" TextWrapping="Wrap" />
-        </StackPanel>
-    </StackPanel>
+        </Grid>
+    </DockPanel>
 </Window>
