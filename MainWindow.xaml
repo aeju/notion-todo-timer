@@ -187,18 +187,32 @@
 
             <Grid Grid.Row="2" Margin="0,6,0,0">
                 <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
-                <TextBox Text="{Binding NewTaskTitle, UpdateSourceTrigger=PropertyChanged}" Padding="4,3"
+                <!-- 영역 선택: Notion 영역 옵션 (새로고침 때 다시 읽음) -->
+                <ComboBox Grid.Column="0" Width="92" Margin="0,0,6,0" VerticalContentAlignment="Center"
+                          ItemsSource="{Binding Categories}" SelectedItem="{Binding NewTaskCategory}"
+                          ToolTip="추가할 할 일의 영역">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate>
+                            <Border CornerRadius="3" Padding="5,1" HorizontalAlignment="Left" Background="{Binding Background}">
+                                <TextBlock Text="{Binding Display}" Foreground="{Binding Foreground}" FontSize="11"
+                                           TextTrimming="CharacterEllipsis" />
+                            </Border>
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
+                <TextBox Grid.Column="1" Text="{Binding NewTaskTitle, UpdateSourceTrigger=PropertyChanged}" Padding="4,3"
                          ToolTip="오늘 할 일 입력 후 Enter → Notion에 오늘 날짜로 추가">
                     <TextBox.InputBindings>
                         <KeyBinding Key="Enter" Command="{Binding AddCommand}" />
                     </TextBox.InputBindings>
                 </TextBox>
                 <!-- 안내 문구: 입력칸이 비었을 때만 보임 (클릭은 아래 입력칸으로 통과) -->
-                <TextBlock Text="할 일 추가 (Enter)" Foreground="#AAA" Margin="7,0,0,0"
+                <TextBlock Grid.Column="1" Text="할 일 추가 (Enter)" Foreground="#AAA" Margin="7,0,0,0"
                            VerticalAlignment="Center" IsHitTestVisible="False">
                     <TextBlock.Style>
                         <Style TargetType="TextBlock">
@@ -211,10 +225,10 @@
                         </Style>
                     </TextBlock.Style>
                 </TextBlock>
-                <TextBox Grid.Column="1" Width="36" Margin="6,0,2,0" Padding="0,3"
+                <TextBox Grid.Column="2" Width="36" Margin="6,0,2,0" Padding="0,3"
                          HorizontalContentAlignment="Center" ToolTip="타이머 길이(분)"
                          Text="{Binding Minutes, UpdateSourceTrigger=PropertyChanged}" />
-                <TextBlock Grid.Column="2" Text="분" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="3" Text="분" VerticalAlignment="Center" />
             </Grid>
 
             <Expander Grid.Row="3" Margin="0,10,0,0" IsExpanded="False" Header="{Binding LongTermHeader}"

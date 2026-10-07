@@ -48,21 +48,35 @@ public sealed class TodoItem : ObservableObject
     public string DueText => Due is { } d ? $"~{d:MM/dd}" : "";
 }
 
+// 추가 입력칸의 영역 선택지 (Notion 영역 옵션 하나). Name이 빈 값이면 "영역 없음"
+public sealed class CategoryOption
+{
+    public required string Name { get; init; }
+    public string Color { get; init; } = "default";
+
+    public bool HasName => Name.Length > 0;
+    public string Display => HasName ? Name : "영역 없음";
+    public string Background => HasName ? NotionColors.Background(Color) : "Transparent";
+    public string Foreground => HasName ? NotionColors.Foreground(Color) : "#999999";
+
+    public static readonly CategoryOption None = new() { Name = "" };
+}
+
 // Notion 태그 색과 비슷한 값. Notion에서 옵션 색을 바꾸면 여기도 따라 바뀐다.
 public static class NotionColors
 {
     private static readonly Dictionary<string, (string Bg, string Fg)> Map = new()
     {
         ["default"] = ("#E8E7E4", "#37352F"),
-        ["gray"]    = ("#E3E2E0", "#32302C"),
-        ["brown"]   = ("#EEE0DA", "#442A1E"),
-        ["orange"]  = ("#FADEC9", "#49290E"),
-        ["yellow"]  = ("#FDECC8", "#402C1B"),
-        ["green"]   = ("#DBEDDB", "#1C3829"),
-        ["blue"]    = ("#D3E5EF", "#183347"),
-        ["purple"]  = ("#E8DEEE", "#412454"),
-        ["pink"]    = ("#F5E0E9", "#4C2337"),
-        ["red"]     = ("#FFE2DD", "#5D1715"),
+        ["gray"] = ("#E3E2E0", "#32302C"),
+        ["brown"] = ("#EEE0DA", "#442A1E"),
+        ["orange"] = ("#FADEC9", "#49290E"),
+        ["yellow"] = ("#FDECC8", "#402C1B"),
+        ["green"] = ("#DBEDDB", "#1C3829"),
+        ["blue"] = ("#D3E5EF", "#183347"),
+        ["purple"] = ("#E8DEEE", "#412454"),
+        ["pink"] = ("#F5E0E9", "#4C2337"),
+        ["red"] = ("#FFE2DD", "#5D1715"),
     };
 
     public static string Background(string color) => (Map.TryGetValue(color, out var c) ? c : Map["default"]).Bg;

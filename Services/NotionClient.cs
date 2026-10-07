@@ -173,21 +173,24 @@ public sealed class NotionClient
         using var _ = await SendAsync(HttpMethod.Patch, $"pages/{pageId}", body);
     }
 
-    // 오늘 DB의 영역 옵션을 Notion에 보이는 순서대로 (이름 → 순번). 정렬 기준으로 씀
-    public async Task<Dictionary<string, int>> GetCategoryOrderAsync()
+    // 오늘 DB의 영역 옵션 (Notion에 보이는 순서, 이름 + 색). 정렬 기준과 추가 입력칸 선택지로 씀
+    public async Task<List<CategoryOption>> GetCategoryOptionsAsync()
     {
-        var order = new Dictionary<string, int>();
-        if (_s.CategoryProperty.Length == 0) return order;
+        var result = new List<CategoryOption>();
+        if (_s.CategoryProperty.Length == 0) return result;
 
         using var doc = await SendAsync(HttpMethod.Get, $"databases/{_s.TodayDatabaseId}", null);
         if (doc.RootElement.GetProperty("properties").TryGetProperty(_s.CategoryProperty, out var prop) &&
             prop.TryGetProperty("select", out var sel) && sel.TryGetProperty("options", out var options))
         {
-            var i = 0;
             foreach (var o in options.EnumerateArray())
-                order[o.GetProperty("name").GetString() ?? ""] = i++;
+                result.Add(new CategoryOption
+                {
+                    Name = o.GetProperty("name").GetString() ?? "",
+                    Color = o.TryGetProperty("color", out var c) ? c.GetString() ?? "default" : "default"
+                });
         }
-        return order;
+        return result;
     }
 
     public async Task RenameAsync(string pageId, string title)

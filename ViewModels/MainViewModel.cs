@@ -26,6 +26,7 @@ public sealed class MainViewModel : ObservableObject
     private TodoItem? _activeTask;
     private TimeSpan _remaining;
     private string _newTaskTitle = "";
+    private CategoryOption _newTaskCategory = CategoryOption.None;
     private int _minutes;
     private string _status = "";
     private bool _isMini;
@@ -35,6 +36,9 @@ public sealed class MainViewModel : ObservableObject
 
     public ObservableCollection<TodoItem> TodayTasks { get; } = new();
     public ObservableCollection<TodoItem> LongTermTasks { get; } = new();
+
+    // 추가 입력칸 영역 선택지: 맨 앞은 "영역 없음", 나머지는 Notion 영역 옵션 순서
+    public ObservableCollection<CategoryOption> Categories { get; } = new() { CategoryOption.None };
 
     public ICommand RefreshCommand { get; }
     public ICommand AddCommand { get; }
@@ -88,6 +92,13 @@ public sealed class MainViewModel : ObservableObject
     // ── 바인딩 속성 ─────────────────────────────
 
     public string NewTaskTitle { get => _newTaskTitle; set => Set(ref _newTaskTitle, value); }
+
+    // 추가 후에도 선택 유지 (같은 영역을 연달아 넣는 경우가 많아서)
+    public CategoryOption NewTaskCategory
+    {
+        get => _newTaskCategory;
+        set => Set(ref _newTaskCategory, value ?? CategoryOption.None);
+    }
     public int Minutes { get => _minutes; set => Set(ref _minutes, Math.Clamp(value, 1, 180)); }
     public string Status { get => _status; private set => Set(ref _status, value); }
     public string ExtendLabel => $"+{_settings.ExtendMinutes}분";
@@ -174,9 +185,14 @@ public sealed class MainViewModel : ObservableObject
             }
 
             var today = await _notion.GetTodayTasksAsync(_loadedDay);
-            Dictionary<string, int> categoryOrder;
-            try { categoryOrder = await _notion.GetCategoryOrderAsync(); }
-            catch { categoryOrder = new(); }   // 영역 순서를 못 읽어도 목록은 보이게
+            var categoryOrder = new Dictionary<string, int>();
+            try
+            {
+                var options = await _notion.GetCategoryOptionsAsync();
+                for (var i = 0; i < options.Count; i++) categoryOrder[options[i].Name] = i;
+                UpdateCategories(options);
+            }
+            catch { }   // 영역 목록을 못 읽어도 할 일 목록은 보이게
             Replace(TodayTasks, SortToday(today, categoryOrder, DayState.LoadOrder(_loadedDay)));
 
             if (_settings.HasLongTerm)
@@ -193,8 +209,8 @@ public sealed class MainViewModel : ObservableObject
         if (_notion == null || title.Length == 0) return;
         await RunAsync(async () =>
         {
-            var item = await _notion.CreateTodayTaskAsync(title, _loadedDay);
-            TodayTasks.Insert(TodayTasks.Count(t => !t.IsDone), item);   // 완료 항목 위, 미완료 맨 끝
+            var item = await _notion.CreateTodayTaskAsync(title, _loadedDay, NewTaskCategory.Name);
+            TodayTasks.Insert(InsertIndexFor(item), item);
             SaveTodayOrder();
             NewTaskTitle = "";
             RaiseHeaders();
@@ -316,6 +332,26 @@ public sealed class MainViewModel : ObservableObject
         else ordered = byDefault;
 
         return ordered.OrderBy(t => t.IsDone).ToList();
+    }
+
+    // 새 할 일 자리: 같은 영역의 마지막 미완료 바로 뒤, 같은 영역이 없으면 미완료 맨 끝
+    private int InsertIndexFor(TodoItem item)
+    {
+        var undone = TodayTasks.Count(t => !t.IsDone);
+        if (item.Category.Length == 0) return undone;
+        for (var i = undone - 1; i >= 0; i--)
+            if (TodayTasks[i].Category == item.Category) return i + 1;
+        return undone;
+    }
+
+    // Notion에서 읽은 영역 옵션으로 선택지를 갈아끼우되, 고르고 있던 영역은 이름으로 유지
+    private void UpdateCategories(List<CategoryOption> options)
+    {
+        var selected = NewTaskCategory.Name;
+        Categories.Clear();
+        Categories.Add(CategoryOption.None);
+        foreach (var o in options) Categories.Add(o);
+        NewTaskCategory = Categories.FirstOrDefault(c => c.Name == selected) ?? CategoryOption.None;
     }
 
     // 드래그: dragged를 target 자리로 옮김 (오늘 목록만). 완료/미완료 경계는 넘지 않음
