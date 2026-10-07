@@ -173,6 +173,23 @@ public sealed class NotionClient
         using var _ = await SendAsync(HttpMethod.Patch, $"pages/{pageId}", body);
     }
 
+    // 오늘 DB의 영역 옵션을 Notion에 보이는 순서대로 (이름 → 순번). 정렬 기준으로 씀
+    public async Task<Dictionary<string, int>> GetCategoryOrderAsync()
+    {
+        var order = new Dictionary<string, int>();
+        if (_s.CategoryProperty.Length == 0) return order;
+
+        using var doc = await SendAsync(HttpMethod.Get, $"databases/{_s.TodayDatabaseId}", null);
+        if (doc.RootElement.GetProperty("properties").TryGetProperty(_s.CategoryProperty, out var prop) &&
+            prop.TryGetProperty("select", out var sel) && sel.TryGetProperty("options", out var options))
+        {
+            var i = 0;
+            foreach (var o in options.EnumerateArray())
+                order[o.GetProperty("name").GetString() ?? ""] = i++;
+        }
+        return order;
+    }
+
     public async Task RenameAsync(string pageId, string title)
     {
         var body = new Dictionary<string, object>
@@ -286,12 +303,11 @@ public sealed class NotionClient
             ? next.GetString()
             : null;
 
-    private async Task<JsonDocument> SendAsync(HttpMethod method, string path, object body)
+    private async Task<JsonDocument> SendAsync(HttpMethod method, string path, object? body)
     {
-        using var request = new HttpRequestMessage(method, path)
-        {
-            Content = new StringContent(JsonSerializer.Serialize(body), Encoding.UTF8, "application/json")
-        };
+        using var request = new HttpRequestMessage(method, path);
+        if (body != null)
+            request.Content = new StringContent(JsonSerializer.Serialize(body), Encoding.UTF8, "application/json");
         using var response = await _http.SendAsync(request);
         var text = await response.Content.ReadAsStringAsync();
 

@@ -1,6 +1,8 @@
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
+using System.Windows.Media;
 using FocusBar.Models;
 using FocusBar.ViewModels;
 
@@ -9,6 +11,8 @@ namespace FocusBar;
 public partial class MainWindow : Window
 {
     private double _normalHeight;
+    private Point _dragStart;
+    private TodoItem? _dragCandidate;
 
     public MainWindow()
     {
@@ -70,5 +74,53 @@ public partial class MainWindow : Window
     {
         if (sender is TextBox { DataContext: TodoItem item } && DataContext is MainViewModel vm)
             await vm.CommitRenameAsync(item);
+    }
+
+    // ── 오늘 목록 드래그로 순서 바꾸기 ─────────────────
+    // 버튼(○, ▶)이나 이름 수정 입력칸을 누른 경우는 드래그로 보지 않음
+
+    private void Row_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        _dragCandidate = null;
+        if (sender is not FrameworkElement { DataContext: TodoItem { Source: TaskSource.Today, IsEditing: false } item }) return;
+        if (IsInside<ButtonBase>(e.OriginalSource) || IsInside<TextBox>(e.OriginalSource)) return;
+        _dragCandidate = item;
+        _dragStart = e.GetPosition(this);
+    }
+
+    private void Row_PreviewMouseMove(object sender, MouseEventArgs e)
+    {
+        if (_dragCandidate == null || e.LeftButton != MouseButtonState.Pressed) return;
+        var d = e.GetPosition(this) - _dragStart;
+        if (Math.Abs(d.Y) < SystemParameters.MinimumVerticalDragDistance &&
+            Math.Abs(d.X) < SystemParameters.MinimumHorizontalDragDistance) return;
+
+        var item = _dragCandidate;
+        _dragCandidate = null;
+        DragDrop.DoDragDrop((DependencyObject)sender, new DataObject(typeof(TodoItem), item), DragDropEffects.Move);
+    }
+
+    private void Row_DragOver(object sender, DragEventArgs e)
+    {
+        var ok = e.Data.GetData(typeof(TodoItem)) is TodoItem dragged &&
+                 sender is FrameworkElement { DataContext: TodoItem target } &&
+                 target.Source == TaskSource.Today && dragged.IsDone == target.IsDone;
+        e.Effects = ok ? DragDropEffects.Move : DragDropEffects.None;
+        e.Handled = true;
+    }
+
+    private void Row_Drop(object sender, DragEventArgs e)
+    {
+        if (e.Data.GetData(typeof(TodoItem)) is TodoItem dragged &&
+            sender is FrameworkElement { DataContext: TodoItem target } &&
+            DataContext is MainViewModel vm)
+            vm.MoveToday(dragged, target);
+    }
+
+    private static bool IsInside<T>(object source) where T : DependencyObject
+    {
+        for (var d = source as DependencyObject; d != null; d = d is Visual or System.Windows.Media.Media3D.Visual3D ? VisualTreeHelper.GetParent(d) : LogicalTreeHelper.GetParent(d))
+            if (d is T) return true;
+        return false;
     }
 }

@@ -38,7 +38,9 @@
 
         <!-- 할 일 한 줄: ○/● 체크 · 제목 · 마감 · ▶ 타이머 (오늘/장기 공용) -->
         <DataTemplate x:Key="TaskRow">
-            <Grid Margin="0,1" Background="Transparent"
+            <Grid Margin="0,1" Background="Transparent" AllowDrop="True"
+                  PreviewMouseLeftButtonDown="Row_PreviewMouseLeftButtonDown"
+                  PreviewMouseMove="Row_PreviewMouseMove" DragOver="Row_DragOver" Drop="Row_Drop"
                   Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType=Window}}">
                 <Grid.ContextMenu>
                     <ContextMenu>

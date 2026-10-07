@@ -27,4 +27,30 @@ public static class DayState
         }
         catch (IOException) { }
     }
+
+    // 드래그로 바꾼 오늘 순서 (페이지 ID 목록). 날짜가 다르면 무시 → 매일 영역별 기본 순서로 시작
+    private static readonly string OrderPath = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "FocusBar", "today-order.txt");
+
+    public static List<string>? LoadOrder(DateTime day)
+    {
+        try
+        {
+            if (!File.Exists(OrderPath)) return null;
+            var lines = File.ReadAllLines(OrderPath);
+            if (lines.Length == 0 || lines[0] != day.ToString("yyyy-MM-dd")) return null;
+            return lines.Skip(1).Where(l => l.Length > 0).ToList();
+        }
+        catch (IOException) { return null; }
+    }
+
+    public static void SaveOrder(DateTime day, IEnumerable<string> ids)
+    {
+        try
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(OrderPath)!);
+            File.WriteAllLines(OrderPath, new[] { day.ToString("yyyy-MM-dd") }.Concat(ids));
+        }
+        catch (IOException) { }
+    }
 }

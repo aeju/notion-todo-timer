@@ -161,13 +161,23 @@ public sealed class MainViewModel : ObservableObject
             var prepared = "";
             if (DayState.LastPrepared() != _loadedDay)
             {
-                var (carried, created) = await _notion.PrepareDayAsync(_loadedDay);
-                DayState.MarkPrepared(_loadedDay);
-                if (carried + created > 0) prepared = $" · 이월 {carried} · 루틴 {created}";
+                try
+                {
+                    var (carried, created) = await _notion.PrepareDayAsync(_loadedDay);
+                    DayState.MarkPrepared(_loadedDay);
+                    if (carried + created > 0) prepared = $" · 이월 {carried} · 루틴 {created}";
+                }
+                catch (Exception ex)
+                {
+                    prepared = $" · 하루 준비 실패: {ex.Message}";
+                }
             }
 
             var today = await _notion.GetTodayTasksAsync(_loadedDay);
-            Replace(TodayTasks, today.OrderBy(t => t.IsDone));
+            Dictionary<string, int> categoryOrder;
+            try { categoryOrder = await _notion.GetCategoryOrderAsync(); }
+            catch { categoryOrder = new(); }   // 영역 순서를 못 읽어도 목록은 보이게
+            Replace(TodayTasks, SortToday(today, categoryOrder, DayState.LoadOrder(_loadedDay)));
 
             if (_settings.HasLongTerm)
                 Replace(LongTermTasks, await _notion.GetLongTermOpenTasksAsync());
@@ -184,7 +194,8 @@ public sealed class MainViewModel : ObservableObject
         await RunAsync(async () =>
         {
             var item = await _notion.CreateTodayTaskAsync(title, _loadedDay);
-            TodayTasks.Add(item);
+            TodayTasks.Insert(TodayTasks.Count(t => !t.IsDone), item);   // 완료 항목 위, 미완료 맨 끝
+            SaveTodayOrder();
             NewTaskTitle = "";
             RaiseHeaders();
             Status = $"추가: {item.Title}";
@@ -266,6 +277,7 @@ public sealed class MainViewModel : ObservableObject
     {
         item.IsDone = done;
         MoveByDone(item.Source == TaskSource.Today ? TodayTasks : LongTermTasks, item);
+        if (item.Source == TaskSource.Today) SaveTodayOrder();
         if (done && ReferenceEquals(item, _activeTask)) ResetTimer();
         RaiseHeaders();
         Status = done ? $"끝: {item.Title}" : $"되돌림: {item.Title}";
@@ -281,6 +293,43 @@ public sealed class MainViewModel : ObservableObject
             : list.Count(t => !t.IsDone && !ReferenceEquals(t, item));
         if (from != to) list.Move(from, to);
     }
+
+    // ── 오늘 정렬 ─────────────────────────────
+    // 기본: 영역별(Notion 옵션 순서) → 같은 영역은 만든 순서, 영역 없는 것은 맨 뒤, 완료는 맨 아래
+    // 오늘 드래그로 바꾼 순서가 있으면 그걸 우선하고, 새로 생긴 항목만 기본 규칙으로 뒤에 붙임
+    private static List<TodoItem> SortToday(List<TodoItem> items, Dictionary<string, int> categoryOrder, List<string>? savedOrder)
+    {
+        int CategoryRank(TodoItem t) =>
+            t.Category.Length > 0 && categoryOrder.TryGetValue(t.Category, out var r) ? r : int.MaxValue;
+
+        // items는 만든 순서로 오므로 OrderBy(안정 정렬)만으로 같은 영역 안 순서가 유지됨
+        var byDefault = items.OrderBy(CategoryRank).ToList();
+
+        List<TodoItem> ordered;
+        if (savedOrder is { Count: > 0 })
+        {
+            var position = savedOrder.Select((id, i) => (id, i)).ToDictionary(x => x.id, x => x.i);
+            var known = byDefault.Where(t => position.ContainsKey(t.Id)).OrderBy(t => position[t.Id]);
+            var fresh = byDefault.Where(t => !position.ContainsKey(t.Id));
+            ordered = known.Concat(fresh).ToList();
+        }
+        else ordered = byDefault;
+
+        return ordered.OrderBy(t => t.IsDone).ToList();
+    }
+
+    // 드래그: dragged를 target 자리로 옮김 (오늘 목록만). 완료/미완료 경계는 넘지 않음
+    public void MoveToday(TodoItem dragged, TodoItem target)
+    {
+        if (ReferenceEquals(dragged, target) || dragged.IsDone != target.IsDone) return;
+        var from = TodayTasks.IndexOf(dragged);
+        var to = TodayTasks.IndexOf(target);
+        if (from < 0 || to < 0) return;
+        TodayTasks.Move(from, to);
+        SaveTodayOrder();
+    }
+
+    private void SaveTodayOrder() => DayState.SaveOrder(_loadedDay, TodayTasks.Select(t => t.Id));
 
     private void RaiseHeaders()
     {
