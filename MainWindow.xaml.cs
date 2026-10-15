@@ -1,3 +1,5 @@
+using System.ComponentModel;
+using System.Diagnostics;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Controls;
@@ -10,6 +12,7 @@ namespace FocusBar;
 
 public partial class MainWindow : Window
 {
+    private readonly AppSettings _settings;
     private double _normalHeight;
     private Point _dragStart;
     private TodoItem? _dragCandidate;
@@ -18,7 +21,8 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
 
-        var vm = new MainViewModel(AppSettings.Load());
+        _settings = AppSettings.Load();
+        var vm = new MainViewModel(_settings);
         DataContext = vm;
 
         // 시간이 끝나면 최소화 상태여도 창을 다시 띄운다
@@ -61,6 +65,18 @@ public partial class MainWindow : Window
     private void Minimize_Click(object sender, RoutedEventArgs e) => WindowState = WindowState.Minimized;
 
     private void Close_Click(object sender, RoutedEventArgs e) => Close();
+
+    // Notion 데스크톱 앱으로 열고, 앱이 없으면(notion:// 미등록) 브라우저로 연다
+    private void OpenNotion_Click(object sender, RoutedEventArgs e)
+    {
+        var id = _settings.NotionPageId;
+        if (id.Length != 32) return;
+        try { Open($"notion://www.notion.so/{id}"); }
+        catch (Win32Exception) { Open($"https://www.notion.so/{id}"); }
+    }
+
+    private static void Open(string url) =>
+        Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
 
     // 이름 수정 입력칸이 나타나면 바로 입력할 수 있게 포커스 + 전체 선택
     private void EditBox_IsVisibleChanged(object sender, DependencyPropertyChangedEventArgs e)

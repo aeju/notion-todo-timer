@@ -45,6 +45,12 @@ public sealed class AppSettings
     public bool HasLongTerm => LongTermDatabaseId.Length == 32;
     public bool HasRoutines => RoutineDatabaseId.Length == 32;
 
+    // 헤더 ↗ 버튼으로 열 Notion 페이지 링크. 비우면 '할 일' DB를 연다
+    public string NotionPageUrl { get; set; } = "";
+
+    // Notion 페이지 ID (32자리). Notion 앱으로 열 때 씀
+    public string NotionPageId => NotionPageUrl.Length > 0 ? NormalizeId(NotionPageUrl) : TodayDatabaseId;
+
     public DateTime CurrentDay => DateTime.Now.AddHours(-DayStartHour).Date;
 
     public static AppSettings Load()

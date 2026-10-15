@@ -124,6 +124,12 @@
             </Grid.ColumnDefinitions>
             <TextBlock Text="FocusBar" Margin="10,0" VerticalAlignment="Center" Foreground="#777" />
             <StackPanel Grid.Column="1" Orientation="Horizontal">
+                <Button Style="{StaticResource IconButton}" Width="Auto" Padding="6,0" Margin="0,0,2,0"
+                        ToolTip="Notion에서 열기" Click="OpenNotion_Click">
+                    <Border BorderBrush="#BBB" BorderThickness="1" CornerRadius="3" Padding="5,0,5,1">
+                        <TextBlock Text="Notion" FontSize="11" Foreground="#555" />
+                    </Border>
+                </Button>
                 <Button Style="{StaticResource IconButton}" Content="⟳" ToolTip="새로고침"
                         Command="{Binding RefreshCommand}" />
                 <Button Style="{StaticResource IconButton}" Content="▭" ToolTip="미니 모드"
